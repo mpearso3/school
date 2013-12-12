@@ -1,0 +1,554 @@
+#include <stdio.h>
+
+// Lots of handy stuff for Lab 12.
+// 1. How to convert from a string-based number to a float.
+// 2. How to view the bits of the float.
+// 3. How to convert the float back into a string-based number.
+
+#define BUF_SIZE 35
+union { int bit_view; float float_view; } in1;
+union {
+    int bit_view;
+    float float_view;
+} first_number;
+
+union {
+    int bit_view;
+    float float_view;
+} second_number;
+
+union {
+    int bit_view;
+    float float_view;
+} result_number;
+
+char *int2bin(int a, char *buffer, int buf_size) {
+    buffer += (buf_size - 1);
+    for (int i = 31; i >= 0; i--) {
+
+   	 *buffer-- = (a & 1) + '0';
+   	 if(i==1) {
+   		 *buffer-- = '|';
+   	 }
+   	 if(i==9){
+   		 *buffer-- = '|';
+   	 }
+
+   	 a >>= 1;
+    }
+    return buffer;
+}
+
+int additionPos(int choice) {
+ 
+    int f_sig, s_sig, f_exp, s_exp, f_sign, s_sign, f_offset, s_offset, difference, r_sig, r_exp, r_sign, answer;
+ 
+    //Get the significand of the first and second union
+   	 f_sig = (first_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 f_sig = (f_sig | 0x800000);
+   	 s_sig = (second_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 s_sig = (s_sig | 0x800000);
+ 
+    //Get the exponent of the first and second union
+   	 f_exp = ((first_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+   	 s_exp = ((second_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+ 
+    //Offset the exponent exp - 127
+   	 f_offset = f_exp - 127;
+   	 s_offset = s_exp - 127;
+ 
+    //Take first_exp - second_exp
+   	 difference = f_offset - s_offset;
+ 
+    //Shift the smaller number by the difference
+   	 if(difference > 0) {
+ 
+   		 r_exp = f_exp;
+   		 s_sig = (s_sig >> difference);
+   	 }
+   	 else if(difference < 0) {
+ 
+   		 r_exp = s_exp;
+   		 difference = difference * -1;
+   		 f_sig = (f_sig >> difference);
+   	 }
+   	 else if(difference == 0) {
+   		 r_exp = f_exp;
+   	 }
+    //Add the two numbers together
+   	 r_sig = f_sig + s_sig;
+    //Shift the result
+/*   	 
+   	 while((r_sig & 0x8FF00000) != 0x80000000) {
+   	 
+   		 r_exp++;
+   		 r_sig = r_sig >> 1;
+   	 }
+*/
+   	 if(r_sig == 0x0) {
+   		 
+   		 result_number.bit_view = ( 0x00 );
+   		 //printf("Result Union: %x \n\r", result_number.bit_view);
+   		 printf("Result Union: %e \n\r", result_number.float_view);   	 
+   		 return 0;
+   	 }
+   	 while(r_sig > 0xFFFFFF) {
+ 
+   		 r_exp++;
+   		 r_sig = r_sig >> 1;
+   	 }
+   	 while(r_sig < 0x800000) {
+ 
+   		 r_exp--;
+   		 r_sig = r_sig << 1;
+   	 }
+ 
+    //Store in the result union
+   	 //printf("f_exp = %d \n\r", f_exp);
+   	 //printf("s_exp = %d \n\r", s_exp);
+   	 //printf("r_exp = %d \n\r", r_exp);
+   	 //printf("result = %x \n\r", r_sig);
+   	 //printf("float_view = %f\n", result_union.float_view);
+    //Get rid of implied 1 on mantissa
+   	 r_sig = r_sig ^ 0x800000;
+
+   	 if(choice == 0) {    //Means both of them are positive
+   		 result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+   	 else if(choice == 1) {    //Means both of them are negative
+   		 result_number.bit_view = ( (0x01 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+ 
+   	 //result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+   	 //printf("Result Union: %x \n\r", result_number.bit_view);
+   	 printf("Result Union: %e \n\r", result_number.float_view);
+ 
+    return answer;
+}
+int additionNeg(int choice) {
+
+    int f_sig, s_sig, f_exp, s_exp, f_sign, s_sign, f_offset, s_offset, difference, r_sig, r_exp, r_sign, answer;
+
+    //Get the significand of the first and second union
+   	 f_sig = (first_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 f_sig = (f_sig | 0x800000);
+   	 s_sig = (second_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 s_sig = (s_sig | 0x800000);
+ 
+    //Get the exponent of the first and second union
+   	 f_exp = ((first_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+   	 s_exp = ((second_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+
+    //Offset the exponent exp - 127
+   	 f_offset = f_exp - 127;
+   	 s_offset = s_exp - 127;
+ 
+    //Take first_exp - second_exp
+   	 difference = f_offset - s_offset;
+ 
+    //Shift the smaller number by the difference
+   	 if(difference > 0) {
+ 
+   		 r_exp = f_exp;
+   		 s_sig = (s_sig >> difference);
+   	 }
+   	 else if(difference < 0) {
+ 
+   		 r_exp = s_exp;
+   		 difference = difference * -1;
+   		 f_sig = (f_sig >> difference);
+   	 }
+   	 else if(difference == 0) {
+   		 r_exp = f_exp;
+   	 }
+    //Add the numbers together but check which is bigger
+   	 
+
+    return answer;
+}
+int subtractionPos(int choice) {
+
+    int f_sig, s_sig, f_exp, s_exp, f_sign, s_sign, f_offset, s_offset, difference, r_sig, r_exp, r_sign, answer;
+
+    //Get the significand of the first and second union
+   	 f_sig = (first_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 f_sig = (f_sig | 0x800000);
+   	 s_sig = (second_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 s_sig = (s_sig | 0x800000);
+ 
+    //Get the exponent of the first and second union
+   	 f_exp = ((first_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+   	 s_exp = ((second_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+
+    //Offset the exponent exp - 127
+   	 f_offset = f_exp - 127;
+   	 s_offset = s_exp - 127;
+ 
+    //Take first_exp - second_exp
+   	 difference = f_offset - s_offset;
+ 
+    //Shift the smaller number by the difference
+   	 if(difference > 0) {
+ 
+   		 r_exp = f_exp;
+   		 s_sig = (s_sig >> difference);
+   	 }
+   	 else if(difference < 0) {
+ 
+   		 r_exp = s_exp;
+   		 difference = difference * -1;
+   		 f_sig = (f_sig >> difference);
+   	 }
+   	 else if(difference == 0) {
+   		 r_exp = f_exp;
+   	 }
+    //Add the numbers together but check which is bigger
+   	 //A - B   if A > B then sign == 0, if A < B then sign == 1
+
+   	 if(f_sig > s_sig) {    // A > B
+   		 r_sig = f_sig - s_sig;
+   		 //printf("A > B \n\r");
+   		 //result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+   	 else if(f_sig < s_sig) { // A < B
+   		 r_sig = s_sig - f_sig;
+   		 //printf("A < B \n\r");
+   		 //result_number.bit_view = ( (0x01 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+   	 else if(f_sig == s_sig) {
+   		 r_sig = 0x00;
+   	 }   	 
+
+   	 //r_sig = f_sig - s_sig;   	 
+
+    //Fix the exponents
+   	 if(r_sig == 0x0) {
+   		 
+   		 result_number.bit_view = ( 0x00 );
+   		 //printf("Result Union: %x \n\r", result_number.bit_view);
+   		 printf("Result Union: %e \n\r", result_number.float_view);   	 
+   		 return 0;
+   	 }
+   	 while(r_sig > 0xFFFFFF) {
+ 
+   		 r_exp++;
+   		 r_sig = r_sig >> 1;
+   	 }
+   	 while(r_sig < 0x800000) {
+ 
+   		 r_exp--;
+   		 r_sig = r_sig << 1;
+   	 }
+    //Get rid of implied 1 on mantissa
+   	 r_sig = r_sig ^ 0x800000;
+
+   	 if(f_sig > s_sig) {    // A > B
+   		 printf("A > B \n\r");
+   		 result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+   	 else if(f_sig < s_sig) { // A < B
+   		 printf("A < B \n\r");
+   		 result_number.bit_view = ( (0x01 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+ 
+   	 //printf("Result Union: %x \n\r", result_number.bit_view);
+   	 printf("Result Union: %e \n\r", result_number.float_view);
+
+    return answer;
+}
+int subtractionNeg(int choice) {
+    int f_sig, s_sig, f_exp, s_exp, f_sign, s_sign, f_offset, s_offset, difference, r_sig, r_exp, r_sign, answer;
+
+    //Get the significand of the first and second union
+   	 f_sig = (first_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 f_sig = (f_sig | 0x800000);
+   	 s_sig = (second_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 s_sig = (s_sig | 0x800000);
+ 
+    //Get the exponent of the first and second union
+   	 f_exp = ((first_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+   	 s_exp = ((second_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+
+    //Offset the exponent exp - 127
+   	 f_offset = f_exp - 127;
+   	 s_offset = s_exp - 127;
+ 
+    //Take first_exp - second_exp
+   	 difference = f_offset - s_offset;
+ 
+    //Shift the smaller number by the difference
+   	 if(difference > 0) {
+ 
+   		 r_exp = f_exp;
+   		 s_sig = (s_sig >> difference);
+   	 }
+   	 else if(difference < 0) {
+ 
+   		 r_exp = s_exp;
+   		 difference = difference * -1;
+   		 f_sig = (f_sig >> difference);
+   	 }
+   	 else if(difference == 0) {
+   		 r_exp = f_exp;
+   	 }
+    //Add the numbers together but check which is bigger
+   	 //-A + B   if A > B then sign == 1, if A < B then sign == 0
+
+   	 if(f_sig > s_sig) {    // A > B
+   		 r_sig = f_sig - s_sig;
+   		 printf("A > B \n\r");
+   	 }
+   	 else if(f_sig < s_sig) { // A < B
+   		 r_sig = s_sig - f_sig;
+   		 printf("A < B \n\r");
+   	 }
+   	 else if(f_sig == s_sig) {
+   		 r_sig = 0x00;
+   	 }   	 
+
+   	 //r_sig = f_sig - s_sig;   	 
+
+    //Fix the exponents
+   	 if(r_sig == 0x0) {
+   		 
+   		 result_number.bit_view = ( 0x00 );
+   		 printf("Result Union: %x \n\r", result_number.bit_view);
+   		 printf("Result Union: %e \n\r", result_number.float_view);   	 
+   		 return 0;
+   	 }
+   	 while(r_sig > 0xFFFFFF) {
+ 
+   		 r_exp++;
+   		 r_sig = r_sig >> 1;
+   	 }
+   	 while(r_sig < 0x800000) {
+ 
+   		 r_exp--;
+   		 r_sig = r_sig << 1;
+   	 }
+    //Get rid of implied 1 on mantissa
+   	 r_sig = r_sig ^ 0x800000;
+
+   	 if(f_sig > s_sig) {    // A > B
+   		 printf("A > B \n\r");
+   		 result_number.bit_view = ( (0x01 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+   	 else if(f_sig < s_sig) { // A < B
+   		 printf("A < B \n\r");
+   		 result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+   	 }
+   	 else if(f_sig == s_sig) {
+   		 result_number.bit_view = ( 0x00 );
+   	 }   	 
+ 
+   	 //printf("Result Union: %x \n\r", result_number.bit_view);
+   	 printf("Result Union: %e \n\r", result_number.float_view);
+
+    return answer;
+}
+int addChoice() {
+    int choice, f_sign, s_sign;
+    //Get the sign of the first and second union
+   	 f_sign = ((first_number.bit_view & 0x80000000) >> 31);
+   	 s_sign = ((second_number.bit_view & 0x80000000) >> 31);    
+
+    if(f_sign == 0x00 && s_sign == 0x00) {   		 //Works
+   	 //Both are positive  A + B
+   	 choice = 0;
+   	 printf("Add pos! \n\r");
+   	 additionPos(choice);
+    }
+    else if(f_sign & s_sign ) {   					 //Works
+   	 //Both of them are negative  -A + -B
+   	 choice = 1;
+   	 printf("Add pos negative numbers! \n\r");
+   	 additionPos(choice);
+    }
+    else if(f_sign == 0x01 && s_sign == 0x00) {   	 //Works
+   	 //First is negative   	 -A + B
+   	 choice = 2;
+   	 printf("Add first neg! \n\r");
+   	 subtractionNeg(choice);
+    }
+    else if(f_sign == 0x00 && s_sign == 0x01) {   	 //Works
+   	 //Second is negative    A - B
+   	 choice = 2;
+   	 printf("Add second neg! \n\r");
+   	 subtractionPos(choice);
+    }
+}
+int subChoice() {
+    int choice, f_sign, s_sign;
+    //Get the sign of the first and second union
+   	 f_sign = ((first_number.bit_view & 0x80000000) >> 31);
+   	 s_sign = ((second_number.bit_view & 0x80000000) >> 31);    
+
+    if(f_sign == 0x00 && s_sign == 0x00) {   		 //Works
+   	 //Both are positive   	 A - B
+   	 choice = 3;
+   	 printf("Subtract pos! \n\r");
+   	 subtractionPos(choice);
+    }
+    else if(f_sign & s_sign ) {   					 //Works
+   	 //Both of them are negative   	 -A + B
+   	 choice = 4;
+   	 printf("sub neg first number! \n\r");
+   	 subtractionNeg(choice);
+    }
+    else if(f_sign == 0x01 && s_sign == 0x00) {   	 //Works
+   	 //First is negative   		 -A - B
+   	 choice = 1;
+   	 printf("Sub first neg! \n\r");
+   	 additionPos(choice);
+    }
+    else if(f_sign == 0x00 && s_sign == 0x01) {   	 //Works
+   	 //Second is negative    A + B
+   	 choice = 0;
+   	 printf("Sub second neg! \n\r");
+   	 additionPos(choice);
+    }
+}
+
+int multiply() {
+    long long f_sig, s_sig, r_exp, r_sign, answer;
+    int f_exp, s_exp, f_sign, s_sign, f_offset, s_offset, difference;
+
+    //Get the significand of the first and second union
+   	 f_sig = (first_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 f_sig = (f_sig | 0x800000);
+   	 s_sig = (second_number.bit_view & 0x007FFFFF);   	 // 007FFFFF == 0000 0000 0111 1111 1111 ...
+   		 s_sig = (s_sig | 0x800000);
+ 
+    //Get the exponent of the first and second union
+   	 f_exp = ((first_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...
+   	 s_exp = ((second_number.bit_view & 0x7F800000) >> 23);    // 7F8 == 0111 1111 1000 0000 ...;
+
+    //Get the sign of the first and second union
+   	 f_sign = ((first_number.bit_view & 0x80000000) >> 31);
+   	 s_sign = ((second_number.bit_view & 0x80000000) >> 31);    
+ 
+    //Get rid of implied 1 on mantissa
+   	 //r_sig = r_sig ^ 0x800000;   	 
+
+    //Add exp
+   	 r_exp = f_exp - 254 + s_exp;
+    //Multiply sig
+   	 long r_sig = (long)((f_sig * s_sig)>>23);
+    //Shift right 23 bits
+   	 //r_sig = r_sig >> 23;    
+    //Normalize
+   	 if(r_sig == 0x0) {
+   		 
+   		 result_number.bit_view = ( 0x00 );
+   		 printf("Zero!");
+   		 //printf("Result Union: %x \n\r", result_number.bit_view);
+   		 printf("Result Union: %e \n\r", result_number.float_view);   	 
+   		 return 0;
+   	 }
+   	 while(r_sig > 0xFFFFFF) {
+ 
+   		 r_exp++;
+   		 r_sig = r_sig >> 1;
+   	 }
+   	 while(r_sig < 0x800000) {
+ 
+   		 r_exp--;
+   		 r_sig = r_sig << 1;
+   	 }
+   	 r_sig = r_sig & 0xFF7FFFFF;
+   	 r_exp = r_exp + 127;
+    //Check for zero!
+   	 if(first_number.float_view == 0 || second_number.float_view == 0) {
+
+   		 result_number.bit_view = ( 0x00 );
+   		 printf("Zero!");
+   		 //printf("Result Union: %x \n\r", result_number.bit_view);
+   		 printf("Result Union: %e \n\r", result_number.float_view);   	 
+   		 return 0;
+   	 }
+    //Fix the sign
+   	 if(f_sign == 0x00 && s_sign == 0x00) {    //Both of them are positive
+
+   		 result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+   		 printf("Both Positive Mult! \n\r");
+   	 }    
+   	 else if(f_sign == 0x01 && s_sign == 0x01) {    //Both of them are negative
+
+   		 result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+   		 printf("Both Negative Mult! \n\r");
+   	 }
+   	 else if(f_sign == 0x01 || s_sign == 0x01) {    //One of them is negative
+
+   		 result_number.bit_view = ( (0x01 << 31) | (r_exp << 23) | (r_sig) );
+   		 printf("One Negative Mult! \n\r");
+   	 }    
+
+   	 //result_number.bit_view = ( (0x00 << 31) | (r_exp << 23) | (r_sig) );
+
+   	 //printf("Result Union: %x \n\r", result_number.bit_view);
+   	 printf("Result Union: %e \n\r", result_number.float_view);
+
+    return answer;
+}
+
+int main()
+{
+    int answer;
+
+    const char* input1 = "0.005E2"; // 0.75
+    const char* input2 = "0.005E2"; // 0.75
+
+    char buffer[BUF_SIZE];
+    buffer[BUF_SIZE - 1] = '\0';
+
+    //printf("HELLO! \n\r");
+
+    sscanf(input1, "%e", &(first_number.float_view)); // Convert the string-based number into a real float.
+    sscanf(input2, "%e", &(second_number.float_view)); // Convert the string-based number into a real float.
+
+    //printf("input1 Sign-bit: %x\n", (first_number.bit_view & 0x80000000) >> 31);
+    //printf("input1 Exponent: %d\n", (first_number.bit_view & 0x7F800000) >> 23); //126 - 127 = -1, since it is normalized.
+    //printf("input1 Significand: %x\n", (first_number.bit_view & 0x007FFFFF));
+
+    //printf("\r\n--------------------\r\n");
+    //int exp = (first_number.bit_view & 0x7F800000)>> 23;
+    //printf("exp=%x\r\n",exp);
+
+    //int2bin(first_number.bit_view, buffer, BUF_SIZE - 1);
+    //printf("a=%s", buffer);
+
+    //printf("\r\n--------------------\r\n");
+
+    //Add
+   	 addChoice();
+    //Sub
+   	 subChoice();
+    //Mult
+   	 printf("Multiply \n\r");
+   	 multiply();
+/*    
+    printf("Hello World\n\r");
+    union {
+     int bit_view;
+     float float_view;
+    } my_union;
+    const char* number_string_1 = "0.0075E2";            	// 0.75
+    char number_string_2[256];                           	// Define a char buffer I will use later.
+    sscanf(number_string_1, "%e", &(my_union.float_view));   // Convert the string-based number into a real float.
+    printf("Sign-bit: %x\n", (my_union.bit_view & 0x80000000) >> 31);
+    printf("Exponent: %d\n", (my_union.bit_view & 0x7F800000) >> 23);
+    printf("Significand: %x\n", (my_union.bit_view & 0x007FFFFF));
+    // Add 1 to the exponent just for fun. exponent = 126 that has a 0 in the LSB of the exponent.
+    // OR-ing '1' to the LSB of the exponent adds 1 to the exponent.
+    my_union.bit_view |= 0x00800000;
+    printf("Exponent: %d\n", (my_union.bit_view & 0x7F800000) >> 23); // Confirm that exponent increased by 1.
+    // Floating point value should double. Do you see why?
+    sprintf(number_string_2, "%e", my_union.float_view); 	// Take the float and convert it back to a string.
+    printf("%s\n", number_string_2);                     	// Print out the converted string.
+*/
+    //int2bin(in1.bit_view, buffer, BUF_SIZE - 1);    
+
+    //answer = additionPos();
+
+    return 0;
+}
